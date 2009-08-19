@@ -1,4 +1,4 @@
-;;; js-doc.el --- Insert js-doc style comment easily
+;;; js-doc.el --- Insert JsDoc style comment easily
 
 ;; Author: mooz <stillpedant@gmail.com>
 ;; Version: 0.0.1
@@ -19,11 +19,30 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-;;; Commentary:
+;; Installation:
+;; put `js-doc.el' somewhere in your emacs load path
+;; add a line below to your .emacs file
+;; (require 'js-doc)
+
+;; Example:
+;; put lines listed below on your .emacs file and you can ...
+;;
+;; 1. insert function document by pressing Ctrl + c, i
+;; 2. insert @tag easily by pressing @ in comment line
+;;
+;; (custom-set-variables
+;;  '(js-doc-mail-address "your email address")
+;;  '(js-doc-author (format "your name <%s>" js-doc-mail-address))
+;;  '(js-doc-url "your url"))
+;; (add-hook 'js2-mode-hook
+;;           '(lambda ()
+;;              (local-set-key "\C-ci" 'js-doc-insert-function-doc)
+;;              (local-set-key "@" 'js-doc-insert-tag)
+;;              ))
 
 ;;; Custom:
 (defgroup js-doc nil
-  "Insert js-doc style comment easily."
+  "Insert JsDoc style comment easily."
   :group 'comment
   :prefix "js-doc")
 
@@ -37,12 +56,64 @@
   :group 'js-doc)
 
 (defcustom js-doc-url ""
-  "Author's Home page address."
+  "Author's Home page URL."
   :group 'js-doc)
 
+(defvar js-doc-format-string-alist
+  '(
+    ("%F" . (buffer-name))
+    ("%P" . (buffer-file-name))
+    ("%a" . js-doc-author)
+    ("%d" . (current-time-string))
+    ("%p" . js-doc-current-parameter-name)
+    ("%f" . js-doc-current-function-name)
+    ))
+
+(defvar js-doc-all-tag-alist
+  '(
+    ("augments" . "Indicate this class uses another class as its \"base.\"")
+    ("author" . "Indicate the author of the code being documented.")
+    ("argument" . "Deprecated synonym for @param.")
+    ("borrows that as this" . "Document that class's member as if it were a member of this class.")
+    ("class" . "Provide a description of the class (versus the constructor).")
+    ("constant" . "Indicate that a variable's value is a constant.")
+    ("constructor" . "Identify a function is a constructor.")
+    ("constructs" . "Identicate that a lent function will be used as a constructor.")
+    ("default" . "Describe the default value of a variable.")
+    ("deprecated" . "Indicate use of a variable is no longer supported.")
+    ("description" . "Provide a description (synonym for an untagged first-line).")
+    ("event" . "Describe an event handled by a class.")
+    ("example" . "Provide a small code example, illustrating usage.")
+    ("extends" . "Synonym for @augments.")
+    ("field" . "Indicate that the variable refers to a non-function.")
+    ("fileOverview" . "Provides information about the entire file.")
+    ("function" . "Indicate that the variable refers to a function.")
+    ("ignore" . "Indicate JsDoc Toolkit should ignore the variable.")
+    ("inner" . "Indicate that the variable refers to an inner function (and so is also @private).")
+    ("lends" . "Document that all an object literal's members are members of a given class.")
+    ("link" . "Like @see but can be used within the text of other tags.")
+    ("memberOf" . "Document that this variable refers to a member of a given class.")
+    ("name" . "Force JsDoc Toolkit to ignore the surrounding code and use the given variable name instead.")
+    ("namespace" . "Document an object literal is being used as a \"namespace.\"")
+    ("param" . "Describe a function's parameter.")
+    ("private" . "Indicate a variable is private (use the -p command line option to include these).")
+    ("property" . "Document a property of a class from within the constructor's doclet.")
+    ("public" . "Indicate an inner variable is public.")
+    ("requires" . "Describe a required resource.")
+    ("returns" . "Describe the return value of a function.")
+    ("see" . "Describe a related resource.")
+    ("since" . "Indicate that a feature has only been available on and after a certain version number.")
+    ("static" . "Indicate that accessing the variable does not require instantiation of its parent.")
+    ("throws" . "Describe the exception that a function might throw.")
+    ("type" . "Describe the expected type of a variable's value or the value returned by a function.")
+    ("version" . "Indicate the release version of this code.")
+    )
+  )
+
 ;;; Lines
-;; special string format
+
 ;; %F => file name
+;; %P => file path
 ;; %a => author name
 ;; %d => current date
 ;; %p => parameter name
@@ -81,6 +152,10 @@
   "return line."
   :group 'js-doc)
 
+(defcustom js-doc-throw-line " * @throws {} \n"
+  "bottom line."
+  :group 'js-doc)
+
 (defcustom js-doc-bottom-line " */\n"
   "bottom line."
   :group 'js-doc)
@@ -89,23 +164,11 @@
   "return"
   :group 'js-doc)
 
-;;; Variables
-(defvar js-doc-format-string-alist
-  '(
-    ("%F" . (buffer-name))
-    ("%P" . (buffer-file-name))
-    ("%a" . js-doc-author)
-    ("%d" . (current-time-string))
-    ("%p" . js-doc-current-parameter-name)
-    ("%f" . js-doc-current-function-name)
-    ))
+(defcustom js-doc-throw-regexp "throw"
+  "throw"
+  :group 'js-doc)
 
-;; %F => file name
-;; %P => file path
-;; %a => author name
-;; %d => current date
-;; %p => parameter name
-;; %f => function name
+;;; Main codes:
 
 (defun js-doc-format-string (arg)
   "format string"
@@ -121,8 +184,6 @@
     )
   arg)
 
-;;; Main codes:
-
 (defun js-doc-tail (list)
   (if (cdr list)
       (js-doc-tail (cdr list))
@@ -132,6 +193,16 @@
 (defun js-doc-pick-symbol-name (str)
   "Pick up symbol-name from str"
   (js-doc-tail (delete "" (split-string str "[^a-zA-Z0-9_$]")))
+  )
+
+(defun js-doc-block-has-regexp (begin end regexp)
+  "return t when regexp matched the current buffer string between begin-end"
+  (save-excursion
+    (goto-char begin)
+    (if (re-search-forward regexp end t)
+        t
+      nil)
+    )
   )
 
 (defun js-doc-insert-file-doc ()
@@ -149,18 +220,6 @@
   (insert "\n")
   )
 
-(defun js-doc-has-return-p (begin end)
-  (save-excursion
-    ;; (insert (concat "{\n"
-    ;;                 (buffer-substring-no-properties begin end)
-    ;;                 "\n}\n"))
-    (goto-char begin)
-    (if (re-search-forward js-doc-return-regexp end t)
-        t
-      nil)
-    )
-  )
-
 (defun js-doc-insert-function-doc ()
   "Insert specified-style comment top of the function"
   (interactive)
@@ -172,7 +231,8 @@
 	to
         begin
 	end
-        has-return)
+        has-return
+        has-throw)
     (save-excursion
       (setq from
             (search-forward "(" nil t))
@@ -188,8 +248,11 @@
       (setq begin (search-forward "{" nil t))
       (setq end (scan-lists (1- begin) 1 0))
       (setq has-return
-            (js-doc-has-return-p begin end))
-      ;; (insert (buffer-substring-no-properties begin end))
+            (js-doc-block-has-regexp begin end
+                                     js-doc-return-regexp))
+      (setq has-throw
+            (js-doc-block-has-regexp begin end
+                                     js-doc-throw-regexp))
       )
     (beginning-of-line)
     (setq from (point))                 ; for indentation
@@ -203,27 +266,53 @@
       )
     ;; Insert return value line
     (when has-return
-      (insert js-doc-return-line))
+      (insert (js-doc-format-string js-doc-return-line)))
+    (when has-throw
+      (insert (js-doc-format-string js-doc-throw-line)))
     (insert js-doc-bottom-line)
     ;; Indent
     (indent-region from (point))
     )
   )
 
-;; (defun js-doc-insert ()
-;;   "Check if the current point is in the function block;
-;; if in the function block, call insert-function-doc;
-;; otherwise, call insert-file-doc."
-;;   (interactive)
-;;   (let ((old-point (point))
-;; 	(new-point nil))
-;;     (beginning-of-defun)
-;;     (setq new-point (point))
-;;     (end-of-defun)
-;;     (if (or (< (point) old-point)
-;; 	    (= 1 new-point))
-;; 	(js-doc-insert-file-doc)
-;;       (js-doc-insert-function-doc)))
-;;   )
+;; http://www.emacswiki.org/emacs/UseIswitchBuffer
+(defun js-doc-icompleting-read (prompt collection)
+  (let ((iswitchb-make-buflist-hook
+	 (lambda ()
+	   (setq iswitchb-temp-buflist collection))))
+    (iswitchb-read-buffer prompt nil nil)))
+
+(defun js-doc-make-tag-list ()
+  (let ((taglist '()))
+    (dolist (tagpair js-doc-all-tag-alist)
+      (add-to-list 'taglist (car tagpair))
+      )
+    (reverse taglist))
+  )
+
+(defun js-doc-in-document-p ()
+  (save-excursion
+    (let (begin end)
+      (beginning-of-line)
+      (setq begin (point))
+      (end-of-line)
+      (setq end (point))
+      (js-doc-block-has-regexp begin end "\*")
+      )
+    )
+  )
+
+(defun js-doc-insert-tag ()
+  (interactive)
+  (insert "@")
+  (when (js-doc-in-document-p)
+    (let ((tag (completing-read
+                "Tag: "
+                (js-doc-make-tag-list))))
+      (when tag
+        (insert tag))
+      )
+    )
+  )
 
 (provide 'js-doc)

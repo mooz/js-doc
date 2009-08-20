@@ -59,16 +59,8 @@
   "Author's Home page URL."
   :group 'js-doc)
 
-(defvar js-doc-format-string-alist
-  '(
-    ("%F" . (buffer-name))
-    ("%P" . (buffer-file-name))
-    ("%a" . js-doc-author)
-    ("%d" . (current-time-string))
-    ("%p" . js-doc-current-parameter-name)
-    ("%f" . js-doc-current-function-name)
-    ))
-
+;; from jsdoc-toolkit wiki
+;; http://code.google.com/p/jsdoc-toolkit/wiki/TagReference
 (defvar js-doc-all-tag-alist
   '(
     ("augments" . "Indicate this class uses another class as its \"base.\"")
@@ -108,7 +100,31 @@
     ("type" . "Describe the expected type of a variable's value or the value returned by a function.")
     ("version" . "Indicate the release version of this code.")
     )
-  )
+  "JsDoc tag list
+This list contains tag name and its description")
+
+(defvar js-doc-format-string-alist
+  '(
+    ("%F" . (buffer-name))
+    ("%P" . (buffer-file-name))
+    ("%a" . js-doc-author)
+    ("%d" . (current-time-string))
+    ("%p" . js-doc-current-parameter-name)
+    ("%f" . js-doc-current-function-name)
+    )
+  "Format and value pair
+Format will be replaced its value in js-doc-format-string")
+
+;; (defvar js-doc-temp-value-pool
+;;   '(
+;;     ("%F" . (buffer-name))
+;;     ("%P" . (buffer-file-name))
+;;     ("%a" . js-doc-author)
+;;     ("%d" . (current-time-string))
+;;     ("%p" . js-doc-current-parameter-name)
+;;     ("%f" . js-doc-current-function-name)
+;;     )
+;;   "")
 
 ;;; Lines
 
@@ -160,12 +176,23 @@
   "bottom line."
   :group 'js-doc)
 
+;; Regular expresisons
 (defcustom js-doc-return-regexp "return "
-  "return"
+  "regular expression of return
+When the function body contains this pattern,
+js-doc-return-line will be inserted"
   :group 'js-doc)
 
 (defcustom js-doc-throw-regexp "throw"
-  "throw"
+  "regular expression of throw
+When the function body contains this pattern,
+js-doc-throw-line will be inserted"
+  :group 'js-doc)
+
+(defcustom js-doc-document-regexp "\*"
+  "regular expression of JsDoc comment
+When the string ahead of current point matches this pattarn,
+js-doc regards current state as in JsDoc style comment"
   :group 'js-doc)
 
 ;;; Main codes:
@@ -209,67 +236,73 @@
   "Insert specified-style comment top of the file"
   (interactive)
   (goto-char 1)
-  (insert js-doc-top-line)
-  (dolist (line-format (list js-doc-file-line
+  (dolist (line-format (list js-doc-top-line
+                             js-doc-file-line
                              js-doc-date-line
                              js-doc-brief-line
                              js-doc-author-line
                              js-doc-bottom-line))
-    (insert (js-doc-format-string line-format))
-    )
+    (insert (js-doc-format-string line-format)))
   (insert "\n")
   )
 
 (defun js-doc-insert-function-doc ()
-  "Insert specified-style comment top of the function"
+  "Insert JsDoc style comment of the function
+The comment style can be custimized via `customize-group js-doc'"
   (interactive)
   (beginning-of-defun)
   ;; Parse function info
   (let ((params '())
+        (document-list '())
 	(head-of-func (point))
 	from
 	to
         begin
-	end
-        has-return
-        has-throw)
+	end)
     (save-excursion
       (setq from
             (search-forward "(" nil t))
       (setq to
             (1- (search-forward ")" nil t)))
-      ;; Now we got string between ()
+      ;; Now we got the string between ()
       (when (> to from)
         (dolist (param-block
                  (split-string (buffer-substring-no-properties from to) ","))
           (add-to-list 'params (js-doc-pick-symbol-name param-block) t)
           )
         )
+      ;; begin-end contains whole function body
       (setq begin (search-forward "{" nil t))
       (setq end (scan-lists (1- begin) 1 0))
-      (setq has-return
-            (js-doc-block-has-regexp begin end
-                                     js-doc-return-regexp))
-      (setq has-throw
-            (js-doc-block-has-regexp begin end
-                                     js-doc-throw-regexp))
       )
-    (beginning-of-line)
-    (setq from (point))                 ; for indentation
-    (insert js-doc-top-line)
-    ;; Insert description line
-    (insert js-doc-description-line)
-    ;; Insert parameter lines
+    ;; put document string into document-list
+    (add-to-list 'document-list
+                 (js-doc-format-string js-doc-top-line) t)
+    (add-to-list 'document-list
+                 (js-doc-format-string js-doc-description-line) t)
+    ;; params
     (dolist (param params)
       (setq js-doc-current-parameter-name param)
-      (insert (js-doc-format-string js-doc-parameter-line))
+      (add-to-list 'document-list
+                   (js-doc-format-string js-doc-parameter-line) t)
       )
-    ;; Insert return value line
-    (when has-return
-      (insert (js-doc-format-string js-doc-return-line)))
-    (when has-throw
-      (insert (js-doc-format-string js-doc-throw-line)))
-    (insert js-doc-bottom-line)
+    ;; return / throw
+    (when (js-doc-block-has-regexp begin end
+                                   js-doc-return-regexp)
+      (add-to-list 'document-list
+                   (js-doc-format-string js-doc-return-line) t))
+    (when (js-doc-block-has-regexp begin end
+                                   js-doc-throw-regexp)
+      (add-to-list 'document-list
+                   (js-doc-format-string js-doc-throw-line) t))
+    ;; end
+    (add-to-list 'document-list
+                 (js-doc-format-string js-doc-bottom-line) t)
+    ;; Insert the document
+    (beginning-of-line)
+    (setq from (point))                 ; for indentation
+    (dolist (document document-list)
+      (insert document))
     ;; Indent
     (indent-region from (point))
     )
@@ -291,18 +324,21 @@
   )
 
 (defun js-doc-in-document-p ()
+  "Return t when the current point is in JsDoc comment"
   (save-excursion
     (let (begin end)
+      (setq end (point))
       (beginning-of-line)
       (setq begin (point))
-      (end-of-line)
-      (setq end (point))
-      (js-doc-block-has-regexp begin end "\*")
+      ;; (end-of-line)
+      ;; (setq end (point))
+      (js-doc-block-has-regexp begin end js-doc-document-regexp)
       )
     )
   )
 
 (defun js-doc-insert-tag ()
+  "Insert a JsDoc tag interactively."
   (interactive)
   (insert "@")
   (when (js-doc-in-document-p)

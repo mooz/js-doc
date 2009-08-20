@@ -25,7 +25,7 @@
 ;; (require 'js-doc)
 
 ;; Example:
-;; put lines listed below on your .emacs file and you can ...
+;; put lines listed below to your .emacs file and you can
 ;;
 ;; 1. insert function document by pressing Ctrl + c, i
 ;; 2. insert @tag easily by pressing @ in comment line
@@ -118,17 +118,6 @@ This list contains tag name and its description")
   "Format and value pair
 Format will be replaced its value in js-doc-format-string")
 
-;; (defvar js-doc-temp-value-pool
-;;   '(
-;;     ("%F" . (buffer-name))
-;;     ("%P" . (buffer-file-name))
-;;     ("%a" . js-doc-author)
-;;     ("%d" . (current-time-string))
-;;     ("%p" . js-doc-current-parameter-name)
-;;     ("%f" . js-doc-current-function-name)
-;;     )
-;;   "")
-
 ;;; Lines
 
 ;; %F => file name
@@ -192,7 +181,7 @@ When the function body contains this pattern,
 js-doc-throw-line will be inserted"
   :group 'js-doc)
 
-(defcustom js-doc-document-regexp "\*"
+(defcustom js-doc-document-regexp "^\[ 	\]*\\*[^//]"
   "regular expression of JsDoc comment
 When the string ahead of current point matches this pattarn,
 js-doc regards current state as in JsDoc style comment"
@@ -229,9 +218,8 @@ js-doc regards current state as in JsDoc style comment"
   "return t when regexp matched the current buffer string between begin-end"
   (save-excursion
     (goto-char begin)
-    (if (re-search-forward regexp end t)
-        t
-      nil)
+    (and t
+         (re-search-forward regexp end t 1))
     )
   )
 
@@ -326,11 +314,11 @@ The comment style can be custimized via `customize-group js-doc'"
     (reverse taglist))
   )
 
-(defun js-doc-in-document-p ()
-  "Return t when the current point is in JsDoc comment"
+(defun js-doc-in-document-p (p)
+  "Return t when the point p is in JsDoc comment"
   (save-excursion
     (let (begin end)
-      (setq end (point))
+      (setq end p)
       (beginning-of-line)
       (setq begin (point))
       ;; (end-of-line)
@@ -344,12 +332,14 @@ The comment style can be custimized via `customize-group js-doc'"
   "Insert a JsDoc tag interactively."
   (interactive)
   (insert "@")
-  (when (js-doc-in-document-p)
+  ;; not include the @
+  (when (js-doc-in-document-p (1- (point)))
     (let ((tag (completing-read
                 "Tag: "
                 (js-doc-make-tag-list))))
       (when tag
-        (insert tag))
+        (insert tag " ")
+        )
       )
     )
   )
@@ -357,12 +347,18 @@ The comment style can be custimized via `customize-group js-doc'"
 (defun js-doc-describe-tag ()
   "Describe the JsDoc tag"
   (interactive)
-  (let ((tag (completing-read
+  (let (
+        (tag (completing-read
                 "Tag: "
-                (js-doc-make-tag-list) nil t (word-at-point))))
+                (js-doc-make-tag-list) nil t (word-at-point)))
+        (temp-buffer-show-hook '(lambda ()
+                                  (fill-region 0 (buffer-size))
+                                  (fit-window-to-buffer)
+                                  ))
+        )
     (when tag
       (with-output-to-temp-buffer "JsDocTagDescription"
-        (princ (format "  @%s\n => %s"
+        (princ (format "@%s\n\n%s"
                        tag
                        (cdr (assoc tag js-doc-all-tag-alist))))
         )

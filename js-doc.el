@@ -39,6 +39,9 @@
 ;;              (local-set-key "\C-ci" 'js-doc-insert-function-doc)
 ;;              (local-set-key "@" 'js-doc-insert-tag)
 ;;              ))
+;;
+;; If you want to see the tag description, just input the next command
+;;   M-x js-doc-describe-tag
 
 ;;; Custom:
 (defgroup js-doc nil
@@ -164,7 +167,7 @@ Format will be replaced its value in js-doc-format-string")
  %p will be replaced with the parameter name."
   :group 'js-doc)
 
-(defcustom js-doc-return-line " * @return\n"
+(defcustom js-doc-return-line " * @returns\n"
   "return line."
   :group 'js-doc)
 
@@ -347,6 +350,22 @@ The comment style can be custimized via `customize-group js-doc'"
                 (js-doc-make-tag-list))))
       (when tag
         (insert tag))
+      )
+    )
+  )
+
+(defun js-doc-describe-tag ()
+  "Describe the JsDoc tag"
+  (interactive)
+  (let ((tag (completing-read
+                "Tag: "
+                (js-doc-make-tag-list) nil t (word-at-point))))
+    (when tag
+      (with-output-to-temp-buffer "JsDocTagDescription"
+        (princ (format "  @%s\n => %s"
+                       tag
+                       (cdr (assoc tag js-doc-all-tag-alist))))
+        )
       )
     )
   )

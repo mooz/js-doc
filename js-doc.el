@@ -189,6 +189,7 @@ js-doc regards current state as in JsDoc style comment"
 
 ;;; Main codes:
 
+;; from smart-compile.el
 (defun js-doc-format-string (arg)
   "format string"
   (let ((rlist js-doc-format-string-alist)

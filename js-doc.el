@@ -119,8 +119,9 @@ This list contains tag name and its description")
     " * @license %l\n"
     js-doc-bottom-line)
   "JsDoc style file document format.
-Each lines in a list will be formatted by `js-doc-format-string'
-and inserted with the `js-doc-insert-file-doc'")
+When the `js-doc-insert-file-doc' is called,
+each lines in a list will be formatted by `js-doc-format-string'
+and inserted to the top of current buffer.")
 
 (defvar js-doc-format-string-alist
   '(
@@ -163,7 +164,7 @@ Format will be replaced its value in `js-doc-format-string'")
  %p will be replaced with the parameter name."
   :group 'js-doc)
 
-(defcustom js-doc-return-line " * @returns\n"
+(defcustom js-doc-return-line " * @returns {} \n"
   "return line."
   :group 'js-doc)
 
@@ -190,6 +191,30 @@ js-doc-throw-line will be inserted"
 When the string ahead of current point matches this pattarn,
 js-doc regards current state as in JsDoc style comment"
   :group 'js-doc)
+
+(defun hohoho ()
+  (interactive)
+  (let ((origin (point)))
+    (if (save-excursion ;; check for already commented region
+          ;; (goto-char beg)
+          (comment-forward (point-max))
+          (<= origin (point)))
+        ;; commented
+        (message "commented")
+      ;; not commented
+      (message "not-commented")
+      )
+    )
+  )
+
+(defun hehe ()
+  (interactive)
+  (if (and t
+           (save-excursion (comment-beginning)))
+      (message "in comment!")
+    (message "not in comment!")
+    )
+  )
 
 ;;; Main codes:
 
@@ -248,54 +273,64 @@ js-doc regards current state as in JsDoc style comment"
   "Insert JsDoc style comment of the function
 The comment style can be custimized via `customize-group js-doc'"
   (interactive)
+  ;; prevent odd behaviour of beginning-of-defun
+  ;; when user call this command in the certain comment,
+  ;; the cursor skip the current function and go to the
+  ;; outside block
+  (end-of-line)
+  (while (or (js-doc-in-comment-p (point))
+             (js-doc-blank-line-p (point)))
+    (forward-line -1)
+    (end-of-line))
+  (end-of-line)
   (beginning-of-defun)
   ;; Parse function info
   (let ((params '())
-        (document-list '())
+	(document-list '())
 	(head-of-func (point))
 	from
 	to
-        begin
+	begin
 	end)
     (save-excursion
       (setq from
-            (search-forward "(" nil t))
+	    (search-forward "(" nil t))
       (setq to
-            (1- (search-forward ")" nil t)))
+	    (1- (search-forward ")" nil t)))
       ;; Now we got the string between ()
       (when (> to from)
-        (dolist (param-block
-                 (split-string (buffer-substring-no-properties from to) ","))
-          (add-to-list 'params (js-doc-pick-symbol-name param-block) t)
-          )
-        )
+	(dolist (param-block
+		 (split-string (buffer-substring-no-properties from to) ","))
+	  (add-to-list 'params (js-doc-pick-symbol-name param-block) t)
+	  )
+	)
       ;; begin-end contains whole function body
       (setq begin (search-forward "{" nil t))
       (setq end (scan-lists (1- begin) 1 0))
       )
     ;; put document string into document-list
     (add-to-list 'document-list
-                 (js-doc-format-string js-doc-top-line) t)
+		 (js-doc-format-string js-doc-top-line) t)
     (add-to-list 'document-list
-                 (js-doc-format-string js-doc-description-line) t)
+		 (js-doc-format-string js-doc-description-line) t)
     ;; params
     (dolist (param params)
       (setq js-doc-current-parameter-name param)
       (add-to-list 'document-list
-                   (js-doc-format-string js-doc-parameter-line) t)
+		   (js-doc-format-string js-doc-parameter-line) t)
       )
     ;; return / throw
     (when (js-doc-block-has-regexp begin end
-                                   js-doc-return-regexp)
+				   js-doc-return-regexp)
       (add-to-list 'document-list
-                   (js-doc-format-string js-doc-return-line) t))
+		   (js-doc-format-string js-doc-return-line) t))
     (when (js-doc-block-has-regexp begin end
-                                   js-doc-throw-regexp)
+				   js-doc-throw-regexp)
       (add-to-list 'document-list
-                   (js-doc-format-string js-doc-throw-line) t))
+		   (js-doc-format-string js-doc-throw-line) t))
     ;; end
     (add-to-list 'document-list
-                 (js-doc-format-string js-doc-bottom-line) t)
+		 (js-doc-format-string js-doc-bottom-line) t)
     ;; Insert the document
     (beginning-of-line)
     (setq from (point))                 ; for indentation
@@ -321,32 +356,46 @@ The comment style can be custimized via `customize-group js-doc'"
     (reverse taglist))
   )
 
-(defun js-doc-in-document-p (p)
-  "Return t when the point p is in JsDoc comment"
+(defun js-doc-blank-line-p (p)
+  "Return t when the line at the current point is blank line"
+  (save-excursion (eql (progn (beginning-of-line) (point))
+		       (progn (end-of-line) (point))))
+  )
+
+(defun js-doc-in-comment-p (p)
+  "Return t when the point p is in the comment"
   (save-excursion
     (let (begin end)
-      (setq end p)
       (beginning-of-line)
       (setq begin (point))
-      ;; (end-of-line)
-      ;; (setq end (point))
-      (js-doc-block-has-regexp begin end js-doc-document-regexp)
+      (end-of-line)
+      (setq end (point))
+      (or (js-doc-block-has-regexp begin end "//")
+          (js-doc-block-has-regexp begin end "/\\*"))
       )
     )
+  )
+
+(defun js-doc-in-document-p (p)
+  "Return t when the point p is in JsDoc document"
+  ;; Method 1 :: just search for the JsDoc
+  (save-excursion
+    (goto-char p)
+    (and (search-backward "/**" nil t)
+	 (not (search-forward "*/" p t))))
   )
 
 (defun js-doc-insert-tag ()
   "Insert a JsDoc tag interactively."
   (interactive)
   (insert "@")
-  ;; not include the @
-  (when (js-doc-in-document-p (1- (point)))
-    (let ((tag (completing-read
-                "Tag: "
-                (js-doc-make-tag-list))))
-      (when tag
-        (insert tag " ")
-        )
+  (when (js-doc-in-document-p (point))
+    (let (
+	  (tag (completing-read "Tag: " (js-doc-make-tag-list)
+				nil nil nil nil nil))
+	  )
+      (unless (string-equal tag "")
+	(insert tag " "))
       )
     )
   )
@@ -355,20 +404,19 @@ The comment style can be custimized via `customize-group js-doc'"
   "Describe the JsDoc tag"
   (interactive)
   (let (
-        (tag (completing-read
-                "Tag: "
-                (js-doc-make-tag-list) nil t (word-at-point)))
-        (temp-buffer-show-hook '(lambda ()
-                                  (fill-region 0 (buffer-size))
-                                  (fit-window-to-buffer)
-                                  ))
-        )
-    (when tag
+	(tag (completing-read "Tag: " (js-doc-make-tag-list)
+			      nil t (word-at-point) nil nil))
+	(temp-buffer-show-hook '(lambda ()
+				  (fill-region 0 (buffer-size))
+				  (fit-window-to-buffer)
+				  ))
+	)
+    (unless (string-equal tag "")
       (with-output-to-temp-buffer "JsDocTagDescription"
-        (princ (format "@%s\n\n%s"
-                       tag
-                       (cdr (assoc tag js-doc-all-tag-alist))))
-        )
+	(princ (format "@%s\n\n%s"
+		       tag
+		       (cdr (assoc tag js-doc-all-tag-alist))))
+	)
       )
     )
   )

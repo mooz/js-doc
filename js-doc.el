@@ -1,7 +1,7 @@
 ;;; js-doc.el --- Insert JsDoc style comment easily
 
 ;; Author: mooz <stillpedant@gmail.com>
-;; Version: 0.0.1
+;; Version: 0.0.2
 ;; Keywords: document, comment
 ;; X-URL: http://www.d.hatena.ne.jp/mooz/
 
@@ -58,6 +58,10 @@
   "Author of the source code."
   :group 'js-doc)
 
+(defcustom js-doc-license ""
+  "License of the source code."
+  :group 'js-doc)
+
 (defcustom js-doc-url ""
   "Author's Home page URL."
   :group 'js-doc)
@@ -86,6 +90,7 @@
     ("ignore" . "Indicate JsDoc Toolkit should ignore the variable.")
     ("inner" . "Indicate that the variable refers to an inner function (and so is also @private).")
     ("lends" . "Document that all an object literal's members are members of a given class.")
+    ("license" . "License of the source code.")
     ("link" . "Like @see but can be used within the text of other tags.")
     ("memberOf" . "Document that this variable refers to a member of a given class.")
     ("name" . "Force JsDoc Toolkit to ignore the surrounding code and use the given variable name instead.")
@@ -106,17 +111,29 @@
   "JsDoc tag list
 This list contains tag name and its description")
 
+(defvar js-doc-file-doc-lines
+  '(js-doc-top-line
+    " * @fileOverview\n"
+    " * @name %F\n"
+    " * @author %a\n"
+    " * @license %l\n"
+    js-doc-bottom-line)
+  "JsDoc style file document format.
+Each lines in a list will be formatted by `js-doc-format-string'
+and inserted with the `js-doc-insert-file-doc'")
+
 (defvar js-doc-format-string-alist
   '(
     ("%F" . (buffer-name))
     ("%P" . (buffer-file-name))
     ("%a" . js-doc-author)
+    ("%l" . js-doc-license)
     ("%d" . (current-time-string))
     ("%p" . js-doc-current-parameter-name)
     ("%f" . js-doc-current-function-name)
     )
   "Format and value pair
-Format will be replaced its value in js-doc-format-string")
+Format will be replaced its value in `js-doc-format-string'")
 
 ;;; Lines
 
@@ -127,22 +144,6 @@ Format will be replaced its value in js-doc-format-string")
 ;; %p => parameter name
 ;; %f => function name
 
-(defcustom js-doc-file-line " * @file %F\n"
-  "file name."
-  :group 'js-doc)
-
-(defcustom js-doc-author-line " * @author %a\n"
-  "author name."
-  :group 'js-doc)
-
-(defcustom js-doc-date-line " * @date %d\n"
-  "time of the comment inserted."
-  :group 'js-doc)
-
-(defcustom js-doc-brief-line " * @brief\n"
-  "brief description of the source code."
-  :group 'js-doc)
-
 (defcustom js-doc-top-line "/**\n"
   "top line of the js-doc style comment."
   :group 'js-doc)
@@ -150,6 +151,12 @@ Format will be replaced its value in js-doc-format-string")
 (defcustom js-doc-description-line" * \n"
   "description line."
   :group 'js-doc)
+
+(defcustom js-doc-bottom-line " */\n"
+  "bottom line."
+  :group 'js-doc)
+
+;; formats for function-doc
 
 (defcustom js-doc-parameter-line " * @param {} %p\n"
   "parameter line.
@@ -164,11 +171,8 @@ Format will be replaced its value in js-doc-format-string")
   "bottom line."
   :group 'js-doc)
 
-(defcustom js-doc-bottom-line " */\n"
-  "bottom line."
-  :group 'js-doc)
+;; ========== Regular expresisons ==========
 
-;; Regular expresisons
 (defcustom js-doc-return-regexp "return "
   "regular expression of return
 When the function body contains this pattern,
@@ -191,7 +195,14 @@ js-doc regards current state as in JsDoc style comment"
 
 ;; from smart-compile.el
 (defun js-doc-format-string (arg)
-  "format string"
+  "Format given string and return its result
+
+%F => file name
+%P => file path
+%a => author name
+%d => current date
+%p => parameter name
+%f => function name"
   (let ((rlist js-doc-format-string-alist)
         (case-fold-search nil))
     (while rlist
@@ -205,6 +216,7 @@ js-doc regards current state as in JsDoc style comment"
   arg)
 
 (defun js-doc-tail (list)
+  "Return the last cons cell of the list"
   (if (cdr list)
       (js-doc-tail (cdr list))
     (car list))
@@ -216,7 +228,7 @@ js-doc regards current state as in JsDoc style comment"
   )
 
 (defun js-doc-block-has-regexp (begin end regexp)
-  "return t when regexp matched the current buffer string between begin-end"
+  "Return t when regexp matched the current buffer string between begin-end"
   (save-excursion
     (goto-char begin)
     (and t
@@ -228,14 +240,8 @@ js-doc regards current state as in JsDoc style comment"
   "Insert specified-style comment top of the file"
   (interactive)
   (goto-char 1)
-  (dolist (line-format (list js-doc-top-line
-                             js-doc-file-line
-                             js-doc-date-line
-                             js-doc-brief-line
-                             js-doc-author-line
-                             js-doc-bottom-line))
-    (insert (js-doc-format-string line-format)))
-  (insert "\n")
+  (dolist (line-format js-doc-file-doc-lines)
+    (insert (js-doc-format-string (eval line-format))))
   )
 
 (defun js-doc-insert-function-doc ()

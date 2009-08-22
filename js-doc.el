@@ -34,6 +34,7 @@
 ;;  '(js-doc-mail-address "your email address")
 ;;  '(js-doc-author (format "your name <%s>" js-doc-mail-address))
 ;;  '(js-doc-url "your url"))
+;;  '(js-doc-license "license name"))
 ;; (add-hook 'js2-mode-hook
 ;;           '(lambda ()
 ;;              (local-set-key "\C-ci" 'js-doc-insert-function-doc)
@@ -191,30 +192,6 @@ js-doc-throw-line will be inserted"
 When the string ahead of current point matches this pattarn,
 js-doc regards current state as in JsDoc style comment"
   :group 'js-doc)
-
-(defun hohoho ()
-  (interactive)
-  (let ((origin (point)))
-    (if (save-excursion ;; check for already commented region
-          ;; (goto-char beg)
-          (comment-forward (point-max))
-          (<= origin (point)))
-        ;; commented
-        (message "commented")
-      ;; not commented
-      (message "not-commented")
-      )
-    )
-  )
-
-(defun hehe ()
-  (interactive)
-  (if (and t
-           (save-excursion (comment-beginning)))
-      (message "in comment!")
-    (message "not in comment!")
-    )
-  )
 
 ;;; Main codes:
 

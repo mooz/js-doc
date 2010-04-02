@@ -1,7 +1,7 @@
 ;;; js-doc.el --- Insert JsDoc style comment easily
 
 ;; Author: mooz <stillpedant@gmail.com>
-;; Version: 0.0.3
+;; Version: 0.0.4
 ;; Keywords: document, comment
 ;; X-URL: http://www.d.hatena.ne.jp/mooz/
 
@@ -25,21 +25,20 @@
 ;; (require 'js-doc)
 
 ;; Example:
-;; put lines listed below to your .emacs file and you can
+;; paste the codes below into your .emacs.el file and you can
 ;;
 ;; 1. insert function document by pressing Ctrl + c, i
-;; 2. insert @tag easily by pressing @ in comment line
+;; 2. insert @tag easily by pressing @ in the JsDoc style comment
 ;;
-;; (custom-set-variables
-;;  '(js-doc-mail-address "your email address")
-;;  '(js-doc-author (format "your name <%s>" js-doc-mail-address))
-;;  '(js-doc-url "your url"))
-;;  '(js-doc-license "license name"))
+;; (setq js-doc-mail-address "your email address"
+;;       js-doc-author (format "your name <%s>" js-doc-mail-address)
+;;       js-doc-url "url of your website"
+;;       js-doc-license "license name")
+;;
 ;; (add-hook 'js2-mode-hook
-;;           '(lambda ()
-;;              (local-set-key "\C-ci" 'js-doc-insert-function-doc)
-;;              (local-set-key "@" 'js-doc-insert-tag)
-;;              ))
+;;           #'(lambda ()
+;;               (define-key js2-mode-map "\C-ci" 'js-doc-insert-function-doc)
+;;               (define-key js2-mode-map "@" 'js-doc-insert-tag)))
 ;;
 ;; If you want to see the tag description, just input the next command
 ;;   M-x js-doc-describe-tag
@@ -192,7 +191,7 @@ js-doc regards current state as in JsDoc style comment"
 ;;; Main codes:
 
 ;; from smart-compile.el
-(defun js-doc-format-string (arg)
+(defun js-doc-format-string (fmt)
   "Format given string and return its result
 
 %F => file name
@@ -200,16 +199,12 @@ js-doc regards current state as in JsDoc style comment"
 %a => author name
 %d => current date
 %p => parameter name
-%f => function name"
-  (let ((rlist js-doc-format-string-alist)
-        (case-fold-search nil))
-    (while rlist
-      (while (string-match (caar rlist) arg)
-        (setq arg
-              (replace-match (eval (cdar rlist)) t nil arg)
-              rlist
-              (cdr rlist)))))
-  arg)
+%f => function name
+"
+  (let ((case-fold-search nil))
+    (dolist (pair js-doc-format-string-alist fmt)
+      (when (string-match (car pair) fmt)
+        (setq fmt (replace-match (eval (cdr pair)) t nil fmt))))))
 
 (defun js-doc-tail (list)
   "Return the last cons cell of the list"
@@ -296,6 +291,7 @@ The comment style can be custimized via `customize-group js-doc'"
     (add-to-list 'document-list
 		 (js-doc-format-string js-doc-bottom-line) t)
     ;; Insert the document
+    (search-backward "(" nil t)
     (beginning-of-line)
     (setq from (point))                 ; for indentation
     (dolist (document document-list)
@@ -306,8 +302,8 @@ The comment style can be custimized via `customize-group js-doc'"
 ;; http://www.emacswiki.org/emacs/UseIswitchBuffer
 (defun js-doc-icompleting-read (prompt collection)
   (let ((iswitchb-make-buflist-hook
-	 (lambda ()
-	   (setq iswitchb-temp-buflist collection))))
+	 #'(lambda ()
+             (setq iswitchb-temp-buflist collection))))
     (iswitchb-read-buffer prompt nil nil)))
 
 (defun js-doc-make-tag-list ()
@@ -355,7 +351,7 @@ The comment style can be custimized via `customize-group js-doc'"
   (interactive)
   (let ((tag (completing-read "Tag: " (js-doc-make-tag-list)
 			      nil t (word-at-point) nil nil))
-	(temp-buffer-show-hook '(lambda ()
+	(temp-buffer-show-hook #'(lambda ()
 				  (fill-region 0 (buffer-size))
 				  (fit-window-to-buffer))))
     (unless (string-equal tag "")

@@ -43,6 +43,8 @@
 ;; If you want to see the tag description, just input the next command
 ;;   M-x js-doc-describe-tag
 
+(require 'iswitchb)
+
 ;;; Custom:
 (defgroup js-doc nil
   "Insert JsDoc style comment easily."

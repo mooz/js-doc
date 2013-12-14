@@ -223,6 +223,7 @@ js-doc regards current state as in JsDoc style comment"
     (and t
          (re-search-forward regexp end t 1))))
 
+;;;###autoload
 (defun js-doc-insert-file-doc ()
   "Insert specified-style comment top of the file"
   (interactive)
@@ -230,6 +231,7 @@ js-doc regards current state as in JsDoc style comment"
   (dolist (line-format js-doc-file-doc-lines)
     (insert (js-doc-format-string (eval line-format)))))
 
+;;;###autoload
 (defun js-doc-insert-function-doc ()
   "Insert JsDoc style comment of the function
 The comment style can be custimized via `customize-group js-doc'"
@@ -336,6 +338,7 @@ The comment style can be custimized via `customize-group js-doc'"
     (and (search-backward "/**" nil t)
 	 (not (search-forward "*/" p t)))))
 
+;;;###autoload
 (defun js-doc-insert-tag ()
   "Insert a JsDoc tag interactively."
   (interactive)
@@ -346,6 +349,7 @@ The comment style can be custimized via `customize-group js-doc'"
       (unless (string-equal tag "")
 	(insert tag " ")))))
 
+;;;###autoload
 (defun js-doc-describe-tag ()
   "Describe the JsDoc tag"
   (interactive)

@@ -3,7 +3,7 @@
 ;; Author: mooz <stillpedant@gmail.com>
 ;; Version: 0.0.4
 ;; Keywords: document, comment
-;; X-URL: http://www.d.hatena.ne.jp/mooz/
+;; URL: https://github.com/mooz/js-doc
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+;;; Commentary:
 
 ;; Installation:
 ;; put `js-doc.el' somewhere in your emacs load path
@@ -42,6 +44,8 @@
 ;;
 ;; If you want to see the tag description, just input the next command
 ;;   M-x js-doc-describe-tag
+
+;;; Code:
 
 ;;; Custom:
 (defgroup js-doc nil
@@ -361,3 +365,6 @@ The comment style can be custimized via `customize-group js-doc'"
 		       (cdr (assoc tag js-doc-all-tag-alist))))))))
 
 (provide 'js-doc)
+
+;;; js-doc.el ends here
+

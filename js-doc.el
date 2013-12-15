@@ -47,6 +47,8 @@
 
 ;;; Code:
 
+(require 'iswitchb)
+
 ;;; Custom:
 (defgroup js-doc nil
   "Insert JsDoc style comment easily."

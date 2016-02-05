@@ -1,7 +1,7 @@
 # js-doc
-Insert JsDoc style comment easily in Emacs
+Insert JSDoc style comment easily in Emacs
 
-## Installation:
+## Installation
 1. Put `js-doc.el` somewhere in your emacs load path.
 2. Add a line below to your .emacs file:
 
@@ -10,10 +10,10 @@ Insert JsDoc style comment easily in Emacs
 ```
 
 ## Example
-paste the codes below into your .emacs.el file and you can
+Paste the codes below into your configuration file and you:
 
 1. insert function document by pressing `Ctrl + c, i`
-2. insert `@tag` easily by pressing `@` in the JsDoc style comment
+2. insert `@tag` easily by pressing `@` in the JSDoc style comment
 
  If you want to see the tag description, just input the next command
    M-x js-doc-describe-tag

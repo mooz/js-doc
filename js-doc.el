@@ -1,7 +1,7 @@
 ;;; js-doc.el --- Insert JsDoc style comment easily
 
 ;; Author: mooz <stillpedant@gmail.com>
-;; Version: 0.0.4
+;; Version: 0.0.5
 ;; Keywords: document, comment
 ;; URL: https://github.com/mooz/js-doc
 

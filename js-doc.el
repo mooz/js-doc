@@ -406,7 +406,7 @@ The comment style can be custimized via `customize-group js-doc'"
   "Describe the JsDoc tag"
   (interactive)
   (let ((tag (completing-read "Tag: " (js-doc-make-tag-list)
-			      nil t (word-at-point) nil nil))
+			      nil t (thing-at-point 'word) nil nil))
 	(temp-buffer-show-hook #'(lambda ()
 				  (fill-region 0 (buffer-size))
 				  (fit-window-to-buffer))))

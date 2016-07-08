@@ -207,7 +207,7 @@ Format will be replaced its value in `js-doc-format-string'")
 
 ;; formats for function-doc
 
-(defcustom js-doc-parameter-line " * @param {} %p\n"
+(defcustom js-doc-parameter-line " * @param {} %p - \n"
   "parameter line.
  %p will be replaced with the parameter name."
   :group 'js-doc)

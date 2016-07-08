@@ -305,6 +305,7 @@ The comment style can be custimized via `customize-group js-doc'"
 	(head-of-func (point))
 	from
 	to
+  (description-point (make-marker))
 	begin
 	end)
     (save-excursion
@@ -322,11 +323,6 @@ The comment style can be custimized via `customize-group js-doc'"
             (search-forward "{" nil t)
             end
             (scan-lists (1- begin) 1 0))
-    ;; put document string into document-list
-    (add-to-list 'document-list
-		 (js-doc-format-string js-doc-top-line) t)
-    (add-to-list 'document-list
-		 (js-doc-format-string js-doc-description-line) t)
     ;; params
     (dolist (param params)
       (setq js-doc-current-parameter-name param)
@@ -348,10 +344,20 @@ The comment style can be custimized via `customize-group js-doc'"
     (search-backward "(" nil t)
     (beginning-of-line)
     (setq from (point))                 ; for indentation
+
+    (insert (js-doc-format-string js-doc-top-line))
+    (insert (js-doc-format-string js-doc-description-line))
+
+    (set-marker description-point (- (point) 1))
+
     (dolist (document document-list)
       (insert document))
+
     ;; Indent
-    (indent-region from (point)))))
+    (indent-region from (point)))
+
+    (goto-char description-point)
+    (set-marker description-point nil)))
 
 ;; http://www.emacswiki.org/emacs/UseIswitchBuffer
 (defun js-doc-icompleting-read (prompt collection)

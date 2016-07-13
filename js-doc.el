@@ -283,11 +283,7 @@ js-doc regards current state as in JsDoc style comment"
   (dolist (line-format js-doc-file-doc-lines)
     (insert (js-doc-format-string (eval line-format)))))
 
-;;;###autoload
-(defun js-doc-insert-function-doc ()
-  "Insert JsDoc style comment of the function
-The comment style can be custimized via `customize-group js-doc'"
-  (interactive)
+(defun js-doc--beginning-of-defun ()
   ;; prevent odd behaviour of beginning-of-defun
   ;; when user call this command in the certain comment,
   ;; the cursor skip the current function and go to the
@@ -298,47 +294,70 @@ The comment style can be custimized via `customize-group js-doc'"
     (forward-line -1)
     (end-of-line))
   (end-of-line)
-  (beginning-of-defun)
+  (beginning-of-defun))
+
+(defun js-doc--parse-function-params (from to)
+  (mapcar #'js-doc-pick-symbol-name
+          (split-string (buffer-substring-no-properties from to) ",")))
+
+(defun js-doc--function-doc-metadata ()
+  "Parse the function's metadata for use with JsDoc."
+  (interactive)
   ;; Parse function info
-  (let ((params '())
-	(document-list '())
-	(head-of-func (point))
-	from
-	to
-	begin
-	end)
+  (let ((metadata '())
+        (params '())
+        from
+        to
+        begin
+        end)
     (save-excursion
-      (setq from
-	    (search-forward "(" nil t)
-            to
-	    (1- (search-forward ")" nil t)))
+      (js-doc--beginning-of-defun)
+
+      (setq from (search-forward "(" nil t)
+            to (1- (search-forward ")" nil t)))
+
       ;; Now we got the string between ()
       (when (> to from)
-	(dolist (param-block
-		 (split-string (buffer-substring-no-properties from to) ","))
-	  (add-to-list 'params (js-doc-pick-symbol-name param-block) t)))
+        (add-to-list
+         'metadata
+         `(params . ,(js-doc--parse-function-params from to))))
+
       ;; begin-end contains whole function body
-      (setq begin
-            (search-forward "{" nil t)
-            end
-            (scan-lists (1- begin) 1 0))
-    ;; put document string into document-list
-    (add-to-list 'document-list
-		 (js-doc-format-string js-doc-top-line) t)
-    (add-to-list 'document-list
-		 (js-doc-format-string js-doc-description-line) t)
+      (setq begin (search-forward "{" nil t)
+            end (scan-lists (1- begin) 1 0))
+
+      ;; return / throw
+      (when (js-doc-block-has-regexp begin end js-doc-return-regexp)
+        (add-to-list 'metadata `(returns . t)))
+
+      (when (js-doc-block-has-regexp begin end js-doc-throw-regexp)
+        (add-to-list 'metadata `(throws . t)))
+
+      metadata)))
+
+;;;###autoload
+(defun js-doc-insert-function-doc ()
+  "Insert JsDoc style comment of the function
+The comment style can be custimized via `customize-group js-doc'"
+  (interactive)
+  (js-doc--beginning-of-defun)
+
+  ;; Parse function info
+  (let ((metadata (js-doc--function-doc-metadata))
+	(document-list '())
+  (description-marker (make-marker))
+	from)
+    (save-excursion
     ;; params
-    (dolist (param params)
+    (dolist (param (cdr (assoc 'params metadata)))
       (setq js-doc-current-parameter-name param)
       (add-to-list 'document-list
 		   (js-doc-format-string js-doc-parameter-line) t))
     ;; return / throw
-    (when (js-doc-block-has-regexp begin end
-				   js-doc-return-regexp)
+    (when (assoc 'returns metadata)
       (add-to-list 'document-list
 		   (js-doc-format-string js-doc-return-line) t))
-    (when (js-doc-block-has-regexp begin end
-				   js-doc-throw-regexp)
+    (when (assoc 'throws metadata)
       (add-to-list 'document-list
 		   (js-doc-format-string js-doc-throw-line) t))
     ;; end
@@ -348,10 +367,58 @@ The comment style can be custimized via `customize-group js-doc'"
     (search-backward "(" nil t)
     (beginning-of-line)
     (setq from (point))                 ; for indentation
+
+    ;; put document string into document-list
+    (insert (js-doc-format-string js-doc-top-line))
+    (insert (js-doc-format-string js-doc-description-line))
+
+    (set-marker description-marker (1- (point)))
+
     (dolist (document document-list)
       (insert document))
+
     ;; Indent
-    (indent-region from (point)))))
+    (indent-region from (point)))
+
+    (goto-char description-marker)
+    (set-marker description-marker nil)))
+
+;;;###autoload
+(defun js-doc-insert-function-doc-snippet ()
+  "Insert JsDoc style comment of the function with yasnippet."
+  (interactive)
+
+  (with-eval-after-load 'yasnippet
+    (let ((metadata (js-doc--function-doc-metadata))
+          (field-count 1))
+      (js-doc--beginning-of-defun)
+      (search-backward "(" nil t)
+      (beginning-of-line)
+
+      (yas-expand-snippet
+       (concat
+        js-doc-top-line
+        " * ${1:Function description.}\n"
+        (mapconcat (lambda (param)
+                     (format
+                      " * @param {${%d:Type of %s}} %s - ${%d:Parameter description.}\n"
+                      (incf field-count)
+                      param
+                      param
+                      (incf field-count)))
+                   (cdr (assoc 'params metadata))
+                   "")
+        (when (assoc 'returns metadata)
+          (format
+           " * @returns {${%d:Return Type}} ${%d:Return description.}\n"
+           (incf field-count)
+           (incf field-count)))
+        (when (assoc 'throws metadata)
+          (format
+           " * @throws {${%d:Exception Type}} ${%d:Exception description.}\n"
+           (incf field-count)
+           (incf field-count)))
+        js-doc-bottom-line)))))
 
 ;; http://www.emacswiki.org/emacs/UseIswitchBuffer
 (defun js-doc-icompleting-read (prompt collection)

@@ -301,7 +301,9 @@ js-doc regards current state as in JsDoc style comment"
           (split-string (buffer-substring-no-properties from to) ",")))
 
 (defun js-doc--function-doc-metadata ()
-  "Parse the function's metadata for use with JsDoc."
+  "Parse the function's metadata for use with JsDoc.
+The point should be at the beginning of the function,
+which is accomplished with js-doc--beginning-of-defun."
   (interactive)
   ;; Parse function info
   (let ((metadata '())
@@ -311,8 +313,6 @@ js-doc regards current state as in JsDoc style comment"
         begin
         end)
     (save-excursion
-      (js-doc--beginning-of-defun)
-
       (setq from (search-forward "(" nil t)
             to (1- (search-forward ")" nil t)))
 
@@ -364,8 +364,6 @@ The comment style can be custimized via `customize-group js-doc'"
     (add-to-list 'document-list
 		 (js-doc-format-string js-doc-bottom-line) t)
     ;; Insert the document
-    (search-backward "(" nil t)
-    (beginning-of-line)
     (setq from (point))                 ; for indentation
 
     ;; put document string into document-list
@@ -389,12 +387,10 @@ The comment style can be custimized via `customize-group js-doc'"
   (interactive)
 
   (with-eval-after-load 'yasnippet
+    (js-doc--beginning-of-defun)
+
     (let ((metadata (js-doc--function-doc-metadata))
           (field-count 1))
-      (js-doc--beginning-of-defun)
-      (search-backward "(" nil t)
-      (beginning-of-line)
-
       (yas-expand-snippet
        (concat
         js-doc-top-line

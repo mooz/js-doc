@@ -58,19 +58,23 @@
 ;; Variables
 (defcustom js-doc-mail-address ""
   "Author's E-mail address."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 (defcustom js-doc-author ""
   "Author of the source code."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 (defcustom js-doc-license ""
   "License of the source code."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 (defcustom js-doc-url ""
   "Author's Home page URL."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 ;; from jsdoc-toolkit wiki
 ;; http://code.google.com/p/jsdoc-toolkit/wiki/TagReference
@@ -195,30 +199,36 @@ Format will be replaced its value in `js-doc-format-string'")
 
 (defcustom js-doc-top-line "/**\n"
   "top line of the js-doc style comment."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 (defcustom js-doc-description-line" * \n"
   "description line."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 (defcustom js-doc-bottom-line " */\n"
   "bottom line."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 ;; formats for function-doc
 
 (defcustom js-doc-parameter-line " * @param {} %p\n"
   "parameter line.
  %p will be replaced with the parameter name."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 (defcustom js-doc-return-line " * @returns {} \n"
   "return line."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 (defcustom js-doc-throw-line " * @throws {} \n"
   "bottom line."
-  :group 'js-doc)
+  :group 'js-doc
+  :safe #'stringp)
 
 ;; ========== Regular expresisons ==========
 

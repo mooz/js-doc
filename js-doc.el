@@ -22,8 +22,8 @@
 ;;; Commentary:
 
 ;; Installation:
-;; put `js-doc.el' somewhere in your emacs load path
-;; add a line below to your .emacs file
+;; put `js-doc.el' somewhere in your emacs `load-path'
+;; add a line below to your .emacs.el file
 ;; (require 'js-doc)
 
 ;; Example:
@@ -303,7 +303,7 @@ js-doc regards current state as in JsDoc style comment"
 (defun js-doc--function-doc-metadata ()
   "Parse the function's metadata for use with JsDoc.
 The point should be at the beginning of the function,
-which is accomplished with js-doc--beginning-of-defun."
+which is accomplished with `js-doc--beginning-of-defun'."
   (interactive)
   ;; Parse function info
   (let ((metadata '())
@@ -338,7 +338,7 @@ which is accomplished with js-doc--beginning-of-defun."
 ;;;###autoload
 (defun js-doc-insert-function-doc ()
   "Insert JsDoc style comment of the function
-The comment style can be custimized via `customize-group js-doc'"
+The comment style can be customized via `customize-group js-doc'"
   (interactive)
   (js-doc--beginning-of-defun)
 
